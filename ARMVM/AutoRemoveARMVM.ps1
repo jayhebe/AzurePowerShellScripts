@@ -1,3 +1,5 @@
+$WarningPreference = "SilentlyContinue"
+
 $strResourceGroupName = "rg-mcsecloud01"
 
 $objVirtualMachines = Get-AzureRmVM -ResourceGroupName $strResourceGroupName -Status
