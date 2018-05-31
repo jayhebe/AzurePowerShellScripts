@@ -11,7 +11,7 @@ Function Read-Choice
         Write-Host "[$intOrderNum] --- $strChoice"
         $intOrderNum++
     }
-    $intChoiceIndex = Read-Host $strPromptMsg
+    $intChoiceIndex = -1
     while ( $intChoiceIndex -notin 0..$intOrderLength )
     {
         $intChoiceIndex = Read-Host $strPromptMsg
@@ -159,4 +159,8 @@ if ( $strAnswer -eq "Y" )
         
         New-AzureRmVM -Name $strARMVMName -ResourceGroupName $strResourceGroupName -Location $strLocationName -VirtualNetworkName $strVirtualNetworkName -SubnetName $strVirtualNetworkSubnetName -Size $strVirtualMachineSizeName -Credential $objARMVMCredential
     }
+}
+else
+{
+    exit 2
 }
