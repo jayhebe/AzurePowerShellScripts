@@ -1,4 +1,3 @@
-
 $WarningPreference = "silentlyContinue"
 Function Read-Choice
 {
@@ -68,6 +67,56 @@ foreach ( $objLocation in $objLocations )
 $intLocationChoiceIndex = Read-Choice -strPromptMsg "Please select which Location you would like to deploy your VMs" -arrStrChoices $arrLocations
 $strLocationName = $arrLocations[$intLocationChoiceIndex]
 
+# # Choose OS type
+# $arrOperatingSystemTypes = @("Windows", "Linux")
+# $intOperatingSystemTypeChoiceIndex = Read-Choice -strPromptMsg "Do you want Windows Server or Linux Server ?" -arrStrChoices $arrOperatingSystemTypes
+# $strOperatingSystemTypeName = $arrOperatingSystemTypes[$intOperatingSystemTypeChoiceIndex]
+
+# # Choose Offer
+# $arrOperatingSystemOffers = @()
+# if ( $strOperatingSystemTypeName -eq "Windows" )
+# {
+#     $strOperatingSystemPublisherName = "MicrosoftWindowsServer"
+#     $objOperatingSystemOffers = Get-AzureRmVMImageOffer -Location $strLocationName -PublisherName $strOperatingSystemPublisherName | Select-Object -Property Offer
+# }
+# if ( $strOperatingSystemTypeName -eq "Linux" )
+# {
+#     # On Azure China Cloud, the Redhat is provided by Yungoal, if you use this script on Azure Global Cloud, change the publisher name accordingly.
+#     $strOperatingSystemPublisherName = "yungoalbj"
+#     $objOperatingSystemOffers = Get-AzureRmVMImageOffer -Location $strLocationName -PublisherName $strOperatingSystemPublisherName | Select-Object -Property Offer
+# }
+# foreach ( $objOperatingSystemOffer in $objOperatingSystemOffers )
+# {
+#     $arrOperatingSystemOffers += ( $objOperatingSystemOffer.Offer )
+# }
+# $intOperatingSystemOfferChoiceIndex = Read-Choice -strPromptMsg "What kind of server do you want ?" -arrStrChoices $arrOperatingSystemOffers
+# $strOperatingSystemOfferName = $arrOperatingSystemOffers[$intOperatingSystemOfferChoiceIndex]
+
+# # Choose SKU
+# $arrOperatingSystemSKUs = @()
+# $objOperatingSystemSKUs = Get-AzureRmVMImageSku -Location $strLocationName -PublisherName $strOperatingSystemPublisherName -Offer $strOperatingSystemOfferName | Select-Object -Property Skus
+# foreach ( $objOperatingSystemSKU in $objOperatingSystemSKUs )
+# {
+#     $arrOperatingSystemSKUs += ( $objOperatingSystemSKU.Skus )
+# }
+# $intOperatingSystemSKUChoiceIndex = Read-Choice -strPromptMsg "Which Operating System SKU do you want ?" -arrStrChoices $arrOperatingSystemSKUs
+# $strOperatingSystemSKU = $arrOperatingSystemSKUs[$intOperatingSystemSKUChoiceIndex]
+
+# # Choose Version
+# $arrOperatingSystemVersions = @()
+# $objOperatingSystemVersions = Get-AzureRmVMImage -Location $strLocationName -PublisherName $strOperatingSystemPublisherName -Offer $strOperatingSystemOfferName -Skus $strOperatingSystemSKU | Select-Object -Property Version
+# foreach ( $objOperatingSystemVersion in $objOperatingSystemVersions )
+# {
+#     $arrOperatingSystemVersions += ( $objOperatingSystemVersion.Version )
+# }
+# $intOperatingSystemVersionChoiceIndex = Read-Choice -strPromptMsg "Which Operating System Version do you want ?" -arrStrChoices $arrOperatingSystemOffers
+# $strOperatingSystemVersion = $arrOperatingSystemVersions[$intOperatingSystemVersionChoiceIndex]
+
+# Choose Operating System
+$arrOperatingSystems = @("Win2016Datacenter", "Win2012R2Datacenter", "Win2012Datacenter", "Win2008R2SP1", "UbuntuLTS", "CentOS", "CoreOS", "Debian", "openSUSE-Leap", "RHEL", "SLES")
+$intOperatingSystemChoiceIndex = Read-Choice -strPromptMsg "Which Operating System do you want" -arrStrChoices $arrOperatingSystems
+$strOperatingSystem = $arrOperatingSystems[$intOperatingSystemChoiceIndex]
+
 # Choose Network, the ARM Virtual Machine must be placed in the same location with the Virtual Network.
 $arrVirtualNetworks = @()
 $objVirtualNetworks = Get-AzureRmVirtualNetwork -ResourceGroupName $strResourceGroupName | Where-Object { $_.Location -eq $strLocationName }
@@ -114,7 +163,7 @@ foreach ( $objVirtualMachineSize in $objVirtualMachineSizes )
     $arrVirtualMachineSizes += ( $objVirtualMachineSize.Name )
 }
 $intVirtualMachineSizeIndex = Read-Choice -strPromptMsg "Please select a VM size" -arrStrChoices $arrVirtualMachineSizes
-$strVirtualMachineSizeName = $arrVirtualMachineSizes[$intVirtualMachineSizeIndex]
+$strVirtualMachineSize = $arrVirtualMachineSizes[$intVirtualMachineSizeIndex]
 
 $strUsername = Read-host "Please enter an administrator user name"
 $strPasswordInput = Read-Host -AsSecureString "Please enter the administrator password"
@@ -124,7 +173,7 @@ $strConfirmPassword = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtim
 
 while ( $strPassword -ne $strConfirmPassword )
 {
-    Write-LogMsg -strLogMsg "The password doesn't match, please enter again."
+    Write-LogMsg -strLogMsg "The password doesn't match, please enter again"
 
     $strPasswordInput = Read-Host -AsSecureString "Please enter the administrator password"
     $strConfirmPasswordInput = Read-Host -AsSecureString "Please confirm the administrator password"
@@ -132,16 +181,16 @@ while ( $strPassword -ne $strConfirmPassword )
     $strConfirmPassword = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($strConfirmPasswordInput))
 }
 
-
 $strAnswer = $null
 while ( $strAnswer -notin ("Y", "N") )
 {
     $strAnswer = Read-Host "You will deploy your VMs with the following profiles, please confirm if they are correct (Y/N):
     Location: $strLocationName
     Resource Group: $strResourceGroupName
+    Operating System: $strOperatingSystem
     Virtual Network: $strVirtualNetworkName
     Subnet: $strVirtualNetworkSubnetName
-    Virtual Machine Size: $strVirtualMachineSizeName
+    Virtual Machine Size: $strVirtualMachineSize
     Administrator User: $strUsername
     "
 }
@@ -156,11 +205,25 @@ if ( $strAnswer -eq "Y" )
     {
         $strARMVMName = $objARMVMName.ARMVMName
         $objARMVMCredential = New-Object System.Management.Automation.PSCredential($strUsername, $strPasswordInput)
+        # $objVMVirtualNetworkSubnet = Get-AzureRmVirtualNetwork -ResourceGroupName $strResourceGroupName -Name $strVirtualNetworkName | Get-AzureRmVirtualNetworkSubnetConfig -Name $strVirtualNetworkSubnetName
+        # $objVMNetworkAdapter = New-AzureRmNetworkInterface -ResourceGroupName $strResourceGroupName -Location $strLocationName -Name "${strARMVMName}-nic01" -Subnet $objVMVirtualNetworkSubnet
+
+        # if ( $strOperatingSystemTypeName -eq "Windows" )
+        # {
+        #     $objVirtualMachine = New-AzureRmVMConfig -VMName $strARMVMName -VMSize $strVirtualMachineSize | Set-AzureRmVMOperatingSystem -Windows -ComputerName $strARMVMName -Credential $objARMVMCredential | Set-AzureRmVMSourceImage -PublisherName $strOperatingSystemPublisherName -Offer $strOperatingSystemOfferName -Skus $strOperatingSystemSKU -Version "latest" | Add-AzureRmVMNetworkInterface -Id $objVMNetworkAdapter.Id
+        # }
+        # if ( $strOperatingSystemTypeName -eq "Linux" )
+        # {
+        #     $objVirtualMachine = New-AzureRmVMConfig -VMName $strARMVMName -VMSize $strVirtualMachineSize | Set-AzureRmVMOperatingSystem -Linux -ComputerName $strARMVMName -Credential $objARMVMCredential | Set-AzureRmVMSourceImage -PublisherName $strOperatingSystemPublisherName -Offer $strOperatingSystemOfferName -Skus $strOperatingSystemSKU -Version "latest" | Add-AzureRmVMNetworkInterface -Id $objVMNetworkAdapter.Id
+        # }
         
-        New-AzureRmVM -Name $strARMVMName -ResourceGroupName $strResourceGroupName -Location $strLocationName -VirtualNetworkName $strVirtualNetworkName -SubnetName $strVirtualNetworkSubnetName -Size $strVirtualMachineSizeName -Credential $objARMVMCredential
+        Write-LogMsg -strLogMsg "Creating Virtual Machine $strARMVMName..."
+        # New-AzureRmVM -ResourceGroupName $strResourceGroupName -Location $strLocationName -VM $objVirtualMachine
+        New-AzureRmVM -Name $strARMVMName -ResourceGroupName $strResourceGroupName -Location $strLocationName -ImageName $strOperatingSystem -Size $strVirtualMachineSize -VirtualNetworkName $strVirtualNetworkName -SubnetName $strVirtualNetworkSubnetName -Credential $objARMVMCredential | Out-Null
+        Write-LogMsg -strLogMsg "Virtual Machine $strARMVMName created successfully."
     }
 }
 else
 {
-    exit 2
+    exit 0
 }
